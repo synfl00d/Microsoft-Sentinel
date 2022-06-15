@@ -1,0 +1,15 @@
+//Checks if a T0 account was used on a non-T0 asset
+//T0 assets need to be defined with device Tag "T0"
+
+let t0accounts = pack_array(
+    'admin_user1'
+    'admin_user2');
+
+let t0 = DeviceInfo 
+    | where MachineGroup has "T0" 
+    | distinct DeviceId;
+
+DeviceLogonEvents
+| where DeviceId !in (t0)
+| where tolower(AccountName) in (t0accounts)
+| project Timestamp, AccountName, AccountDomain, DeviceName, LogonType, ReportId, DeviceId
