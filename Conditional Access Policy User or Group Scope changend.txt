@@ -1,0 +1,30 @@
+//This query check if there were any changes in the scope of a Conditional Access Policy for example a user was excluded
+//The query should not run more than once a day to not generate excessive amounts of Incidents
+
+AuditLogs
+| where Category =~ "Policy"
+//Begin Optional: Specify if only events outside working ours should fire an incident
+//| extend Hour = hourofday(TimeGenerated)
+//| where Hour <= 6 and Hour > 18
+//End Optional
+//Begin Optional: Only for Updates. Add Create/Delete for more events
+| where AADOperationType in ("Update")
+| where ActivityDisplayName in ("Update conditional access policy")
+//End Optional
+| extend InitiatingApp = tostring(parse_json(tostring(InitiatedBy.app)).displayName)
+| extend Initiator = iif(isnotempty(InitiatingApp), InitiatingApp, tostring(parse_json(tostring(InitiatedBy.user)).userPrincipalName))
+| mv-expand TargetResources
+| mv-expand TargetResources.modifiedProperties
+| mv-expand TargetResources_modifiedProperties.newValue
+| mv-expand TargetResources_modifiedProperties.oldValue
+| extend OldIncludedGroups = tostring(parse_json(tostring(TargetResources_modifiedProperties_oldValue)).conditions.users.includeGroups)
+| extend NewIncludedGroups = tostring(parse_json(tostring(TargetResources_modifiedProperties_newValue)).conditions.users.includeGroups)
+| extend OldExcludedGroups = tostring(parse_json(tostring(TargetResources_modifiedProperties_oldValue)).conditions.users.excludeGroups)
+| extend NewExcludedGroups = tostring(parse_json(tostring(TargetResources_modifiedProperties_newValue)).conditions.users.excludeGroups)
+| extend OldIncludedUsers = tostring(parse_json(tostring(TargetResources_modifiedProperties_oldValue)).conditions.users.includeUsers)
+| extend NewIncludedUsers = tostring(parse_json(tostring(TargetResources_modifiedProperties_newValue)).conditions.users.includeUsers)
+| extend OldExcludedUsers = tostring(parse_json(tostring(TargetResources_modifiedProperties_oldValue)).conditions.users.excludeUsers)
+| extend NewExcludedUsers = tostring(parse_json(tostring(TargetResources_modifiedProperties_newValue)).conditions.users.excludeUsers)
+| where OldIncludedGroups <> NewIncludedGroups or OldExcludedGroups  <> NewExcludedGroups or OldIncludedUsers <> NewIncludedUsers or OldExcludedUsers <> NewExcludedUsers
+| project-away ResourceId, OperationVersion, Category, ResultSignature, ResultDescription, DurationMs, Resource, ResourceGroup, Level, InitiatedBy, AADTenantId, ActivityDisplayName, AADOperationType, Id, LoggedByService, Type, SourceSystem, TenantId, TargetResources_modifiedProperties, TargetResources_modifiedProperties_newValue, TargetResources_modifiedProperties_oldValue
+| project-reorder InitiatingApp, Initiator, OldIncludedGroups, NewIncludedGroups, OldExcludedGroups, NewExcludedGroups, OldIncludedUsers, NewIncludedUsers, OldExcludedUsers, NewExcludedUsers
