@@ -1,0 +1,6 @@
+//This query checks if any .ONION DNS Lookups occured in connected DNS Event Tables
+//ASIM Parsers must be deployed first
+
+_ASim_Dns
+| extend tld = tostring(split(Domain, ".")[-1])
+| where tld == "onion"
