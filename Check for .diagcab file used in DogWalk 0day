@@ -1,0 +1,5 @@
+//Check if .diagcab file exists in Device Events to further investigate
+
+DeviceFileEvents
+| extend FileExtension = split(FileName, ".")[-1] //get last element of array
+| where FileExtension =~ "diagcab"
