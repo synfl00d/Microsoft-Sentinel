@@ -1,0 +1,8 @@
+//Check for access on Teams auth cleartext token
+//The query checks if any non Windows or Teams process accessess the Teams cookies file or the leveldb folder.
+DeviceFileEvents
+| where (FolderPath has "\\Microsoft\\Teams\\" and FileName == "Cookies" and InitiatingProcessFileName != "Teams.exe")
+    or (FolderPath  has "\\Microsoft\\Teams\\Local Storage\\leveldb" and InitiatingProcessFileName != "Teams.exe")
+| join kind=innerunique DeviceProcessEvents on $left.InitiatingProcessId == $right.ProcessId and DeviceId
+| where FileName1 != "Teams.exe" and FolderPath1 !contains "C:\\Windows"
+| project TimeGenerated, ActionType, DeviceName, AccessedFileName = FileName, AccessingAccountDomain = AccountDomain, AccessingAccountName = AccountName, AccountUpn, AccountSid, AccessedFolder = FolderPath, RequestAccountName, RequestProtocol, RequestorFile = FileName1, RequestorPath = FolderPath1, InitiatingProcessCommandLine = InitiatingProcessCommandLine1, ProcessCommandLine, InitiatingProcessFolderPath = InitiatingProcessFolderPath1, InitiatingProcessIntegrityLevel = InitiatingProcessIntegrityLevel1, InitiatingProcessParentFileName = InitiatingProcessParentFileName1, LogonId
